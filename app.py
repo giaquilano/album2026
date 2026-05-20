@@ -1,85 +1,137 @@
 import streamlit as st
 
-# Configuración de la página del navegador
+# Configuración de la página
 st.set_page_config(page_title="Mi Álbum Mundial 2026", page_icon="🏆", layout="centered")
 
-# Título de la aplicación
-st.title("🏆 Mi Álbum del Mundial 2026 🏆")
-st.write("¡Llevá el control de tus figuritas de forma fácil!")
-
-# Lista real de selecciones del Mundial 2026
-paises = [
-    "Grupo A - Estados Unidos", "Grupo A - México", "Grupo A - Canadá", "Grupo A - Alianza",
-    "Grupo B - Argentina", "Grupo B - Selección 2", "Grupo B - Selección 3", "Grupo B - Selección 4",
-    "Grupo C - Brasil", "Grupo C - Selección 2", "Grupo C - Selección 3", "Grupo C - Selección 4",
-    "Grupo D - Francia", "Grupo D - Selección 2", "Grupo D - Selección 3", "Grupo D - Selección 4",
-    "Grupo E - España", "Grupo E - Selección 2", "Grupo E - Selección 3", "Grupo E - Selección 4",
-    "Grupo F - Alemania", "Grupo F - Selección 2", "Grupo F - Selección 3", "Grupo F - Selección 4",
-    "Grupo G - Inglaterra", "Grupo G - Selección 2", "Grupo G - Selección 3", "Grupo G - Selección 4",
-    "Grupo H - Portugal", "Grupo H - Selección 2", "Grupo H - Selección 3", "Grupo H - Selección 4"
+# --- DICCIONARIO OFICIAL DE PAÍSES (ORDEN EN BASE A PASCAL) ---
+lista_paises = [
+    ("MEX", "MEX (Mexico)"), ("RSA", "RSA (Sudafrica)"), ("KOR", "KOR (Republica de corea)"), ("CZE", "CZE (Chequia)"),
+    ("CAN", "CAN (Canada)"), ("BIH", "BIH (Bosnia y Herzegovina)"), ("QAT", "QAT (Qatar)"), ("SUI", "SUI (Suiza)"),
+    ("BRA", "BRA (Brasil)"), ("MAR", "MAR (Marruecos)"), ("HAI", "HAI (Haiti)"), ("SCO", "SCO (Escocia)"),
+    ("USA", "USA (Estados Unidos)"), ("PAR", "PAR (Paraguay)"), ("AUS", "AUS (Australia)"), ("TUR", "TUR (Turquia)"),
+    ("GER", "GER (Alemania)"), ("CUW", "CUW (Curazao)"), ("CIV", "CIV (Costa de marfil)"), ("ECU", "ECU (Ecuador)"),
+    ("NED", "NED (Paises Bajos)"), ("JPN", "JPN (Japon)"), ("SWE", "SWE (Suecia)"), ("TUN", "TUN (Tunes)"),
+    ("BEL", "BEL (Belgica)"), ("EGY", "EGY (Egypto)"), ("IRN", "IRN (Iran)"), ("NZL", "NZL (Nueva Zelanda)"),
+    ("ESP", "ESP (España)"), ("CPV", "CPV (Cabo Verde)"), ("KSA", "KSA (Arabia Saudita)"), ("URU", "URU (Uruguay)"),
+    ("FRA", "FRA (Francia)"), ("SEN", "SEN (Senegal)"), ("IRQ", "IRQ (Iraq)"), ("NOR", "NOR (Noruega)"),
+    ("ARG", "ARG (Argentina)"), ("ALG", "ALG (Argelia)"), ("AUT", "AUT (Austria)"), ("JOR", "JOR (Jordania)"),
+    ("POR", "POR (Portugal)"), ("COD", "COD (DR Congo)"), ("UZB", "UZB (Uzbekistan)"), ("COL", "COL (Colombia)"),
+    ("ENG", "ENG (Inglaterra)"), ("CRO", "CRO (Croacia)"), ("GHA", "GHA (Ghana)"), ("PAN", "PAN (Panama)")
 ]
 
-# Inicializar los datos en la memoria de la sesión si no existen
-if "pegadas" not in st.session_state:
-    st.session_state.pegadas = set()
-if "repetidas" not in st.session_state:
-    st.session_state.repetidas = {}
+# --- ESTRUCTURACIÓN DE LAS SECCIONES ESPECIALES ---
+secciones_especiales = [
+    ("FWC_SPEC", "FWC Specials", 5),
+    ("FWC_BALL", "FWC ball and countries", 4),
+    ("FWC_HIST", "FWC history", 11),
+    ("COCA", "Coca-Cola", 14)
+]
 
-# --- SECCIÓN 1: PROGRESO GENERAL ---
-st.subheader("📊 Progreso General")
+# --- INICIALIZAR VARIABLES DE SESIÓN (ESTRUCTURAS DE DATOS) ---
+if "album_pegadas" not in st.session_state:
+    st.session_state.album_pegadas = set()  # Guarda las figuritas únicas obtenidas
+if "album_repetidas" not in st.session_state:
+    st.session_state.album_repetidas = {}  # Diccionario/Hash: clave (ID) -> valor (cantidad)
 
-total_album = 450
-cant_pegadas = len(st.session_state.pegadas)
-cant_repetidas = sum(st.session_state.repetidas.values())
-
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Figuritas", f"{total_album}")
-col2.metric("Pegadas", f"{cant_pegadas}")
-col3.metric("Repetidas", f"{cant_repetidas}")
-
-# Barra de progreso matemática
-porcentaje = cant_pegadas / total_album
-st.progress(porcentaje)
+# Título de la interfaz
+st.title("🏆 Mi Álbum del Mundial 2026 🏆")
+st.write("Ingresá tus figuritas obtenidas y dejá que el sistema analice tu progreso.")
 
 st.markdown("---")
 
-# --- SECCIÓN 2: GESTIONAR FIGURITAS ---
-st.subheader("📝 Gestionar Figuritas")
+# --- SECCIÓN 1: INGRESO DE DATOS (PROCESAMIENTO AUTOMÁTICO) ---
+st.subheader("📝 Ingresar Figurita Obtenida")
 
-seleccion = st.selectbox("Seleccioná el Grupo o Selección:", paises)
-numero = st.number_input("Número de figurita (1 al 18):", min_value=1, max_value=18, step=1)
+tipo_figu = st.radio("¿Qué tipo de figurita vas a cargar?", ["País / Selección", "Sección Especial"], horizontal=True)
 
-# Identificador único de la figurita (ej: "Argentina-10")
-id_figu = f"{seleccion}-{numero}"
+id_final = ""
+nombre_visual = ""
 
-col_btn1, col_btn2 = st.columns(2)
+if tipo_figu == "País / Selección":
+    pais_elegido = st.selectbox("Seleccioná el País:", lista_paises, format_func=lambda x: x[1])
+    num_figu = st.number_input("Número de figurita (1 al 20):", min_value=1, max_value=20, step=1)
+    id_final = f"{pais_elegido[0]}-{num_figu}"
+    nombre_visual = f"{pais_elegido[1]} - N° {num_figu}"
+else:
+    especial_elegida = st.selectbox("Seleccioná la Sección Especial:", secciones_especiales, format_func=lambda x: x[1])
+    num_figu = st.number_input(f"Número de figurita (1 al {especial_elegida[2]}):", min_value=1, max_value=especial_elegida[2], step=1)
+    id_final = f"{especial_elegida[0]}-{num_figu}"
+    nombre_visual = f"{especial_elegida[1]} - N° {num_figu}"
 
-with col_btn1:
-    if st.button("✅ Marcar como Pegada", use_container_width=True):
-        st.session_state.pegadas.add(id_figu)
-        st.rerun()
-
-with col_btn2:
-    if st.button("📇 Agregar a Repetidas", use_container_width=True):
-        if id_figu in st.session_state.repetidas:
-            st.session_state.repetidas[id_figu] += 1
-        else:
-            st.session_state.repetidas[id_figu] = 1
-        st.rerun()
-
-st.markdown("---")
-
-# --- SECCIÓN 3: LISTADO DE CONTROL ---
-st.subheader("📋 Estado de esta Selección")
-st.write(f"Figuritas de **{seleccion}**:")
-
-# Mostrar las 18 figuritas de la selección seleccionada actual
-for i in range(1, 19):
-    check_id = f"{seleccion}-{i}"
-    if check_id in st.session_state.pegadas:
-        st.write(f"🔹 Figurita {i:02d}: **PEGADA** ✅")
-    elif check_id in st.session_state.repetidas:
-        cant_rep = st.session_state.repetidas[check_id]
-        st.write(f"🔸 Figurita {i:02d}: Faltante (Tenés {cant_rep} repetida/s) 📇")
+if st.button("➕ Registrar Figurita", use_container_width=True):
+    # Si no la tiene pegada, se agrega como obtenida única
+    if id_final not in st.session_state.album_pegadas:
+        st.session_state.album_pegadas.add(id_final)
+        st.success(f"¡Genial! Pegaste una nueva: {nombre_visual}")
+    # Si ya la tenía pegada, pasa automáticamente a ser una repetida
     else:
-        st.write(f"⬜ Figurita {i:02d}: Faltante ❌")
+        st.session_state.album_repetidas[id_final] = st.session_state.album_repetidas.get(id_final, 0) + 1
+        st.warning(f"Esta ya la tenías pegada. Se guardó en Repetidas: {nombre_visual}")
+    st.rerun()
+
+st.markdown("---")
+
+# --- SECCIÓN 2: ANÁLISIS Y ESTADÍSTICAS AUTOMÁTICAS ---
+st.subheader("📊 Análisis del Álbum")
+
+TOTAL_ALBUM = 980  # (48*20) + 5 + 4 + 11 + 14 = 980
+
+obtenidas = len(st.session_state.album_pegadas)
+faltantes = TOTAL_ALBUM - obtenidas
+total_repetidas = sum(st.session_state.album_repetidas.values())
+porcentaje = (obtenidas / TOTAL_ALBUM) * 100
+
+# Tarjetas métricas visuales
+col1, col2, col3 = st.columns(3)
+col1.metric("Figuritas Obtenidas", f"{obtenidas} / {TOTAL_ALBUM}")
+col2.metric("Figuritas Faltantes", f"{faltantes}")
+col3.metric("Total Repetidas", f"{total_repetidas}")
+
+# Barra de progreso dinámica
+st.write(f"**Porcentaje completo del álbum:** {porcentaje:.2f}%")
+st.progress(porcentaje / 100)
+
+st.markdown("---")
+
+# --- SECCIÓN 3: GESTIÓN DE INTERCAMBIOS ("CAMBIÉ FIGURITA") ---
+st.subheader("🔄 Módulo de Intercambio")
+
+if len(st.session_state.album_repetidas) == 0:
+    st.info("Todavía no tenés figuritas repetidas cargadas para cambiar.")
+else:
+    # Mapeo para mostrar nombres lindos en el selector de intercambio
+    def mapear_nombre(codigo_id):
+        partes = codigo_id.split("-")
+        cod, num = partes[0], partes[1]
+        # Buscar en países
+        for p_cod, p_nom in lista_paises:
+            if p_cod == cod: return f"{p_nom} - N° {num}"
+        # Buscar en especiales
+        for e_cod, e_nom, _ in secciones_especiales:
+            if e_cod == cod: return f"{e_nom} - N° {num}"
+        return codigo_id
+
+    opciones_rep = list(st.session_state.album_repetidas.keys())
+    figu_a_cambiar = st.selectbox("Seleccioná la figurita que vas a cambiar:", opciones_rep, format_func=mapear_nombre)
+    
+    cant_actual = st.session_state.album_repetidas[figu_a_cambiar]
+    st.write(f"Tenés **{cant_actual}** repetida(s) de esta figurita.")
+
+    if st.button(f"🤝 Cambié esta figurita", use_container_width=True):
+        if st.session_state.album_repetidas[figu_a_cambiar] > 1:
+            st.session_state.album_repetidas[figu_a_cambiar] -= 1
+            st.success("Se descontó 1 unidad de tus repetidas.")
+        else:
+            del st.session_state.album_repetidas[figu_a_cambiar]
+            st.success("¡Cambiaste la última! Ya no te quedan repetidas de esta.")
+        st.rerun()
+
+st.markdown("---")
+
+# --- SECCIÓN 4: VER LISTADO DE REPETIDAS ---
+with st.expander("📋 Ver detalle de tus Figuritas Repetidas"):
+    if len(st.session_state.album_repetidas) == 0:
+        st.write("No hay repetidas.")
+    else:
+        for k, v in st.session_state.album_repetidas.items():
+            st.write(f"• {mapear_nombre(k)} → **{v} rep.**")
