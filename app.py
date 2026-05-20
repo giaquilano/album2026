@@ -3,7 +3,7 @@ import streamlit as st
 # Configuración de la página
 st.set_page_config(page_title="Mi Álbum Mundial 2026", page_icon="🏆", layout="centered")
 
-# --- DICCIONARIO OFICIAL DE PAÍSES (ORDEN EN BASE A PASCAL) ---
+
 lista_paises = [
     ("MEX", "MEX (Mexico)"), ("RSA", "RSA (Sudafrica)"), ("KOR", "KOR (Republica de corea)"), ("CZE", "CZE (Chequia)"),
     ("CAN", "CAN (Canada)"), ("BIH", "BIH (Bosnia y Herzegovina)"), ("QAT", "QAT (Qatar)"), ("SUI", "SUI (Suiza)"),
@@ -19,7 +19,7 @@ lista_paises = [
     ("ENG", "ENG (Inglaterra)"), ("CRO", "CRO (Croacia)"), ("GHA", "GHA (Ghana)"), ("PAN", "PAN (Panama)")
 ]
 
-# --- ESTRUCTURACIÓN DE LAS SECCIONES ESPECIALES ---
+
 secciones_especiales = [
     ("FWC_SPEC", "FWC Specials", 5),
     ("FWC_BALL", "FWC ball and countries", 4),
@@ -27,19 +27,19 @@ secciones_especiales = [
     ("COCA", "Coca-Cola", 14)
 ]
 
-# --- INICIALIZAR VARIABLES DE SESIÓN (ESTRUCTURAS DE DATOS) ---
-if "album_pegadas" not in st.session_state:
-    st.session_state.album_pegadas = set()  # Guarda las figuritas únicas obtenidas
-if "album_repetidas" not in st.session_state:
-    st.session_state.album_repetidas = {}  # Diccionario/Hash: clave (ID) -> valor (cantidad)
 
-# Título de la interfaz
+if "album_pegadas" not in st.session_state:
+    st.session_state.album_pegadas = set()  
+if "album_repetidas" not in st.session_state:
+    st.session_state.album_repetidas = {} 
+
+
 st.title("🏆 Mi Álbum del Mundial 2026 🏆")
 st.write("Ingresá tus figuritas obtenidas y dejá que el sistema analice tu progreso.")
 
 st.markdown("---")
 
-# --- SECCIÓN 1: INGRESO DE DATOS (PROCESAMIENTO AUTOMÁTICO) ---
+
 st.subheader("📝 Ingresar Figurita Obtenida")
 
 tipo_figu = st.radio("¿Qué tipo de figurita vas a cargar?", ["País / Selección", "Sección Especial"], horizontal=True)
@@ -59,11 +59,11 @@ else:
     nombre_visual = f"{especial_elegida[1]} - N° {num_figu}"
 
 if st.button("➕ Registrar Figurita", use_container_width=True):
-    # Si no la tiene pegada, se agrega como obtenida única
+    
     if id_final not in st.session_state.album_pegadas:
         st.session_state.album_pegadas.add(id_final)
         st.success(f"¡Genial! Pegaste una nueva: {nombre_visual}")
-    # Si ya la tenía pegada, pasa automáticamente a ser una repetida
+   
     else:
         st.session_state.album_repetidas[id_final] = st.session_state.album_repetidas.get(id_final, 0) + 1
         st.warning(f"Esta ya la tenías pegada. Se guardó en Repetidas: {nombre_visual}")
@@ -71,42 +71,42 @@ if st.button("➕ Registrar Figurita", use_container_width=True):
 
 st.markdown("---")
 
-# --- SECCIÓN 2: ANÁLISIS Y ESTADÍSTICAS AUTOMÁTICAS ---
+
 st.subheader("📊 Análisis del Álbum")
 
-TOTAL_ALBUM = 980  # (48*20) + 5 + 4 + 11 + 14 = 980
+TOTAL_ALBUM = 980  
 
 obtenidas = len(st.session_state.album_pegadas)
 faltantes = TOTAL_ALBUM - obtenidas
 total_repetidas = sum(st.session_state.album_repetidas.values())
 porcentaje = (obtenidas / TOTAL_ALBUM) * 100
 
-# Tarjetas métricas visuales
+
 col1, col2, col3 = st.columns(3)
 col1.metric("Figuritas Obtenidas", f"{obtenidas} / {TOTAL_ALBUM}")
 col2.metric("Figuritas Faltantes", f"{faltantes}")
 col3.metric("Total Repetidas", f"{total_repetidas}")
 
-# Barra de progreso dinámica
+
 st.write(f"**Porcentaje completo del álbum:** {porcentaje:.2f}%")
 st.progress(porcentaje / 100)
 
 st.markdown("---")
 
-# --- SECCIÓN 3: GESTIÓN DE INTERCAMBIOS ("CAMBIÉ FIGURITA") ---
+
 st.subheader("🔄 Módulo de Intercambio")
 
 if len(st.session_state.album_repetidas) == 0:
     st.info("Todavía no tenés figuritas repetidas cargadas para cambiar.")
 else:
-    # Mapeo para mostrar nombres lindos en el selector de intercambio
+    
     def mapear_nombre(codigo_id):
         partes = codigo_id.split("-")
         cod, num = partes[0], partes[1]
-        # Buscar en países
+      
         for p_cod, p_nom in lista_paises:
             if p_cod == cod: return f"{p_nom} - N° {num}"
-        # Buscar en especiales
+        
         for e_cod, e_nom, _ in secciones_especiales:
             if e_cod == cod: return f"{e_nom} - N° {num}"
         return codigo_id
@@ -128,7 +128,7 @@ else:
 
 st.markdown("---")
 
-# --- SECCIÓN 4: VER LISTADO DE REPETIDAS ---
+
 with st.expander("📋 Ver detalle de tus Figuritas Repetidas"):
     if len(st.session_state.album_repetidas) == 0:
         st.write("No hay repetidas.")
