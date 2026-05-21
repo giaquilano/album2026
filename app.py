@@ -1,7 +1,20 @@
 import streamlit as st
+from st_supabase_connection import SupabaseConnection
 
 
 st.set_page_config(page_title="Mi Álbum Mundial 2026", page_icon="🏆", layout="centered")
+
+
+
+@st.cache_resource
+def init_connection():
+    return st.connection("supabase", type=SupabaseConnection)
+
+try:
+    supabase = init_connection()
+except Exception:
+
+    supabase = None
 
 
 lista_paises = [
@@ -19,7 +32,6 @@ lista_paises = [
     ("ENG", "ENG (Inglaterra)"), ("CRO", "CRO (Croacia)"), ("GHA", "GHA (Ghana)"), ("PAN", "PAN (Panama)")
 ]
 
-
 secciones_especiales = [
     ("FWC_SPEC", "FWC Specials", 5),
     ("FWC_BALL", "FWC ball and countries", 4),
@@ -28,14 +40,69 @@ secciones_especiales = [
 ]
 
 
-if "album_pegadas" not in st.session_state:
-    st.session_state.album_pegadas = set()  
-if "album_repetidas" not in st.session_state:
-    st.session_state.album_repetidas = {} 
+def cargar_datos_usuario(usuario):
+    if supabase is None:
+        return set(), {}
+    try:
+        
+        res = supabase.table("albumes").select("pegadas, repetidas").eq("usuario", usuario).execute()
+        if res.data:
+            pegadas_db = set(res.data[0].get("pegadas", []))
+            repetidas_db = res.data[0].get("repetidas", {})
+            return pegadas_db, repetidas_db
+    except Exception:
+        pass
+    return set(), {}
+
+def guardar_datos_usuario(usuario, pegadas, repetidas):
+    if supabase is None: return
+    try:
+        
+        lista_pegadas = list(pegadas)
+        
+        supabase.table("albumes").upsert({
+            "usuario": usuario,
+            "pegadas": lista_pegadas,
+            "repetidas": repetidas
+        }, on_conflict="usuario").execute()
+    except Exception:
+        pass
 
 
-st.title("🏆 Mi Álbum del Mundial 2026 🏆")
-st.write("Ingresá tus figuritas obtenidas y dejá que el sistema analice tu progreso.")
+if "usuario_conectado" not in st.session_state:
+    st.session_state.usuario_conectado = None
+
+
+if st.session_state.usuario_conectado is None:
+    st.title("🔐 Iniciar Sesión - Mi Álbum 2026")
+    st.write("Ingresá tu nombre de usuario personalizado para guardar tu progreso de forma permanente.")
+    
+    usuario_input = st.text_input("Nombre de Usuario:", placeholder="Ej: giada_2026").strip().lower()
+    
+    if st.button("🚀 Ingresar a mi Álbum", use_container_width=True):
+        if usuario_input:
+            st.session_state.usuario_conectado = usuario_input
+            
+            pegadas, repetidas = cargar_datos_usuario(usuario_input)
+            st.session_state.album_pegadas = pegadas
+            st.session_state.album_repetidas = repetidas
+            st.rerun()
+        else:
+            st.error("Por favor, escribí un nombre de usuario válido.")
+    st.stop()  
+
+
+usuario = st.session_state.usuario_conectado
+
+
+col_tit, col_logout = st.columns([4, 1])
+with col_tit:
+    st.title("🏆 Mi Álbum del Mundial 2026 🏆")
+    st.write(f"Conectado como: **{usuario}** 🟢 (Tus datos se guardan automáticamente en la nube)")
+with col_logout:
+    if st.button("🔒 Salir"):
+        st.session_state.usuario_conectado = None
+        st.rerun()
 
 st.markdown("---")
 
@@ -65,6 +132,9 @@ if st.button("➕ Registrar Figurita", use_container_width=True):
     else:
         st.session_state.album_repetidas[id_final] = st.session_state.album_repetidas.get(id_final, 0) + 1
         st.warning(f"Esta ya la tenías pegada. Se guardó en Repetidas: {nombre_visual}")
+    
+    
+    guardar_datos_usuario(usuario, st.session_state.album_pegadas, st.session_state.album_repetidas)
     st.rerun()
 
 st.markdown("---")
@@ -72,7 +142,7 @@ st.markdown("---")
 
 st.subheader("📊 Análisis del Álbum")
 
-TOTAL_ALBUM = 980  
+TOTAL_ALBUM = 980
 
 obtenidas = len(st.session_state.album_pegadas)
 faltantes = TOTAL_ALBUM - obtenidas
@@ -117,6 +187,9 @@ else:
         else:
             del st.session_state.album_repetidas[figu_a_cambiar]
             st.success("¡Cambiaste la última! Ya no te quedan repetidas de esta.")
+        
+        
+        guardar_datos_usuario(usuario, st.session_state.album_pegadas, st.session_state.album_repetidas)
         st.rerun()
 
 st.markdown("---")
@@ -125,7 +198,6 @@ st.markdown("---")
 st.subheader("📋 Reporte de Figuritas Faltantes")
 
 filtro_reporte = st.selectbox("Ver faltantes de:", ["Todo el Álbum", "Solo Selecciones", "Solo Secciones Especiales"])
-
 
 def obtener_numeros_faltantes(codigo, max_num):
     faltan_numeros = []
@@ -139,17 +211,14 @@ with st.expander("🔍 Hacer clic acá para desplegar el listado detallado"):
         st.balloons()
         st.success("¡FELICITACIONES! Completaste el álbum entero. 🎉")
     else:
-       
         if filtro_reporte in ["Todo el Álbum", "Solo Selecciones"]:
             st.markdown("### 🏳️ Selecciones Nacionales")
             for cod, nombre in lista_paises:
                 lista_num = obtener_numeros_faltantes(cod, 20)
                 if lista_num:
-                    
                     numeros_texto = ", ".join(lista_num)
                     st.write(f"• **{nombre}:** Faltan N° [{numeros_texto}]")
         
-       
         if filtro_reporte in ["Todo el Álbum", "Solo Secciones Especiales"]:
             st.markdown("### 🌟 Secciones Especiales")
             for cod, nombre, max_num in secciones_especiales:
